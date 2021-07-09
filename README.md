@@ -2,8 +2,7 @@
 
 ## 1.- Levantar el servicio de docker
 ```
-docker run -d --name sonarqube -p 9000:9000
-sonarqube:7.5-community
+docker run -d --name sonarqube -p 9000:9000 sonarqube:7.5-community
 ```
 
 ## 2.- Login en
@@ -121,8 +120,7 @@ RUN sonar-scanner \
 
 
 ```
-sudo docker build --network=host --no-cache -t scanner-app
-Dockerfile.sonar
+sudo docker build --network=host --no-cache -t scanner-app Dockerfile.sonar
 ```
 
 
