@@ -26,6 +26,13 @@ docker build --network=host --tag sonar-scanner-image:latest --build-arg  SONAR_
 ```
 
 ## Test Código
+
+```
+docker pull sonarsource/sonar-scanner-cli 
+```
+
+
+
 ```
 FROM sonarsource/sonar-scanner-cli AS sonarqube_scan
 WORKDIR /app
