@@ -1,77 +1,45 @@
-FROM microsoft/dotnet:2.2.104-sdk AS sonarqube
-# Install OpenJDK-8
-RUN apt-get update && \
-apt-get install -y openjdk-8-jdk && \
-apt-get install -y ant && \
-apt-get clean;
-# Fix certificate issues
-RUN apt-get update && \
-apt-get install ca-certificates-java && \
-apt-get clean && \
-update-ca-certificates -f;
-# Setup JAVA_HOME
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
-RUN export JAVA_HOM
-# Env variables
-ENV NODE_VERSION 10.13.0
-ENV NODE_DOWNLOAD_SHA
-b4b5d8f73148dcf277df413bb16827be476f4fa117cbbec2aaabc8cc0a8588e1
-# Install node.js
-RUN curl -SL
-"https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar
-.gz" --output nodejs.tar.gz \
-&& echo "$NODE_DOWNLOAD_SHA nodejs.tar.gz" | sha256sum -c - \
-&& tar -xzf "nodejs.tar.gz" -C /usr/local --strip-components=1 \
-&& rm nodejs.tar.gz \
-&& ln -s /usr/local/bin/node /usr/local/bin/nodejs
-# Install global tools
-RUN dotnet tool install -g dotnetsay
-RUN dotnet tool install --global dotnet-sonarscanner --version 4.5.0
-# Add global tools folder to PATH
-ENV PATH="${PATH}:/root/.dotnet/tools"
-# Get required packages for sonar scanner
-RUN apt-get update && apt-get -y install curl bash unzip yarn bzip2
-WORKDIR /root
-ENV LATEST='sonar-scanner-cli-3.3.0.1492-linux.zip'
-# Get & install sonar scanner
-RUN env && \
-curl -OL
-'https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/'$LATEST &&
-\
-mkdir sonar_scanner && unzip -d sonar_scanner $LATEST && mv sonar_scanner/*
-sonar_home && \
-rm -rf sonar_scanner $LATEST
-# Add sonar scanner to PATH
-ENV SONAR_RUNNER_HOME=/root/sonar_home
-ENV PATH ${SONAR_RUNNER_HOME}/bin:$PATH
-ARG SONAR_HOST
-ARG SONAR_LOGIN_TOKEN
-# make temporary folder for seed analysis for javascript scanner
-WORKDIR /root/temp1
-RUN mkdir src
-RUN touch src/test.js
-# Init sonarscanner cache with plugins
-RUN sonar-scanner -Dsonar.host.url=$SONAR_HOST
--Dsonar.login=$SONAR_LOGIN_TOKEN -Dsonar.analysis.mode=preview
--Dsonar.projectKey="pluginsSeedJS" -Dsonar.sources="src"
-WORKDIR /root
-# Remove temporary folder
-RUN rm /root/temp1 -rf
-# make temporary folder for seed analysis
-WORKDIR /root/temp2
-# Init sonarscanner cache with plugins for .NET scanner
-RUN dotnet sonarscanner begin /k:"pluginsSeedNET"
-/d:sonar.host.url=$SONAR_HOST /d:sonar.login=$SONAR_LOGIN_TOKEN
-/d:sonar.analysis.mode=preview
-RUN dotnet new sln --name FooBar
-RUN dotnet new mvc --name Foo --output Foo
-RUN dotnet new console --name Bar --output Bar
-RUN dotnet sln add ./Foo/Foo.csproj
-RUN dotnet sln add ./Bar/Bar.csproj
-RUN dotnet restore
-RUN dotnet build FooBar.sln
-RUN dotnet sonarscanner end /d:sonar.login=$SONAR_LOGIN_TOKEN ; exit 0
-WORKDIR /root
-# Remove temporary folder
-RUN rm /root/temp2 -rf
+FROM adoptopenjdk/openjdk11:alpine-jre
 
+ARG SONAR_SCANNER_HOME=/opt/sonar-scanner
+ARG SONAR_SCANNER_VERSION
+ARG UID=1000
+ARG GID=1000
+ENV JAVA_HOME=/opt/java/openjdk \
+    HOME=/tmp \
+    XDG_CONFIG_HOME=/tmp \
+    SONAR_SCANNER_HOME=${SONAR_SCANNER_HOME} \
+    SONAR_USER_HOME=${SONAR_SCANNER_HOME}/.sonar \
+    PATH=/opt/java/openjdk/bin:${SONAR_SCANNER_HOME}/bin:${PATH} \
+    NODE_PATH=/usr/lib/node_modules \
+    SRC_PATH=/usr/src
+
+WORKDIR /opt
+
+RUN set -ex \
+    && addgroup -S -g ${GID} scanner-cli \
+    && adduser -S -D -u ${UID} -G scanner-cli scanner-cli \
+    && apk add --no-cache --virtual build-dependencies wget unzip gnupg \
+    && apk add --no-cache git python3 py-pip bash shellcheck 'nodejs>10' 'npm>7' \
+    && wget -U "scannercli" -q -O /opt/sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}.zip \
+    && wget -U "scannercli" -q -O /opt/sonar-scanner-cli.zip.asc https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}.zip.asc \
+    && wget -U "scannercli" -q -O /opt/sonarsource-public.key https://binaries.sonarsource.com/sonarsource-public.key \
+    && gpg --import /opt/sonarsource-public.key \
+    && gpg --verify /opt/sonar-scanner-cli.zip.asc /opt/sonar-scanner-cli.zip \
+    && unzip sonar-scanner-cli.zip \
+    && rm sonar-scanner-cli.zip sonar-scanner-cli.zip.asc \
+    && mv sonar-scanner-${SONAR_SCANNER_VERSION} ${SONAR_SCANNER_HOME} \
+    && npm install -g typescript@3.7.5 \
+    && pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir pylint \
+    && apk del --purge build-dependencies \
+    && mkdir -p "${SRC_PATH}" "${SONAR_USER_HOME}" "${SONAR_USER_HOME}/cache"\
+    && chown -R scanner-cli:scanner-cli "${SONAR_SCANNER_HOME}" "${SRC_PATH}" \
+    && chmod -R 777 "${SRC_PATH}" "${SONAR_USER_HOME}"
+
+COPY --chown=scanner-cli:scanner-cli bin /usr/bin/
+
+WORKDIR ${SRC_PATH}
+
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+
+CMD ["sonar-scanner"]
