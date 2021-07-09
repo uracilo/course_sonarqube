@@ -1,6 +1,6 @@
 # course_sonarqube
 
-## 1.- Levantar el servicio de docker
+## 1.- Levantar el servicio de docker de Sonar View
 ```
 docker run -d --name sonarqube -p 9000:9000 sonarqube:7.5-community
 ```
@@ -16,10 +16,9 @@ para el escaneo de nuestro código a revisar
 
 ## 4.- Click en generar y guardar el token generado
 
-## 5.- Generar la siguiente imagen para ​ SonarQube scanner en otro
-directorio
+## 5.- Generar el Sonar de SonarQube 
 
-## 6.- Construir la imagen del escáner
+## 6.- Construir la imagen Sonar de SonarQube 
 
 ```
 docker build --network=host --tag sonar-scanner-image:latest --build-arg  SONAR_HOST="http://localhost:9000" --build-arg SONAR_LOGIN_TOKEN="TOKEN_VALUE" .
