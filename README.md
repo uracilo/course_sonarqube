@@ -27,19 +27,19 @@ docker build --network=host --tag sonar-scanner-image:latest --build-arg  SONAR_
 
 ## Test Código
 ```
-FROM sonar-scanner-image:latest AS sonarqube_scan
+FROM sonarsource/sonar-scanner-cli AS sonarqube_scan
 WORKDIR /app
 COPY . .
 RUN ls -list
 RUN sonar-scanner \
--Dsonar.host.url="http://localhost:9000" \
--Dsonar.projectKey="SONAR_PROJECT_KEY" \
--Dsonar.sources="."
+	-Dsonar.host.url="http://localhost:9000" \
+	-Dsonar.projectKey="510db2b5c26cb90b2432e64a4e96e3048ca9dfa8" \
+	-Dsonar.sources="."
 ```
 
 
 ```
-sudo docker build --network=host --no-cache -t scanner-app Dockerfile.sonar
+docker build --network=host --no-cache -t scanner-app -f  Dockerfile.test .
 ```
 
 
