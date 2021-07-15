@@ -39,7 +39,7 @@ COPY . .
 RUN ls -list
 RUN sonar-scanner \
 	-Dsonar.host.url="http://localhost:9000" \
-	-Dsonar.projectKey="510db2b5c26cb90b2432e64a4e96e3048ca9dfa8" \
+	-Dsonar.projectKey="TOKEN_SONAR" \
 	-Dsonar.sources="."
 ```
 
